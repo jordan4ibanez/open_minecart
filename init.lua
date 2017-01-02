@@ -17,7 +17,7 @@ minetest.register_entity("open_minecart:minecart", {
 	collision_radius = 1, -- collision sphere radius
 	physical     = true,
 	collide_with_objects = false, -- for magnetic collision
-	max_velocity = 5,
+	max_velocity = 4,
 	acceleration = 5,
 	automatic_face_movement_dir = 90, --for smoothness
 	yaw = 0,
@@ -238,7 +238,7 @@ minetest.register_entity("open_minecart:minecart", {
 					self.yaw = self.yaw+math.pi
 				end
 				
-				self.velocity = 5
+				self.velocity = self.max_velocity
 			end
 		--try to change dir
 		elseif self.is_rail == false and self.direction then
@@ -268,7 +268,7 @@ minetest.register_entity("open_minecart:minecart", {
 								self.yaw = self.yaw+math.pi
 							end
 							
-							self.velocity = 5
+							self.velocity = self.max_velocity
 						end
 								
 						return
@@ -300,7 +300,7 @@ minetest.register_entity("open_minecart:minecart", {
 								self.yaw = self.yaw+math.pi
 							end
 							
-							self.velocity = 5
+							self.velocity = self.max_velocity
 						end
 								
 						return
@@ -308,12 +308,6 @@ minetest.register_entity("open_minecart:minecart", {
 					end
 				end
 			
-			end
-			
-			
-			--just give up and go off the rails
-			if self.is_rail == false then
-				--print("give up")
 			end
 		
 		end
@@ -350,6 +344,9 @@ minetest.register_entity("open_minecart:minecart", {
 		--on rail
 		if self.on_rail == true then
 			self.next_rail(self,vm,area,data)
+		else
+			--just give up and go off the rails
+			self.velocity = 0
 		end
 		
 		
