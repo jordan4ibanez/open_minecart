@@ -204,7 +204,7 @@ minetest.register_entity("open_minecart:minecart", {
 
 		local gravity = -10
 		self.object:set_properties({physical = true,})
-		if self.is_rail == true and self.pitch ~= 0 then
+		if (self.is_rail == true and self.pitch ~= 0) or (self.is_rail == true and (math.floor(vel.y+0.5) > 0 or math.floor(vel.y+0.5) < 0)) then
 			gravity = self.pitch
 			--ghost through nodes when going up
 			self.object:set_properties({physical = false,})
@@ -212,6 +212,13 @@ minetest.register_entity("open_minecart:minecart", {
 		
 		--print(gravity)
 		--print(self.velocity)
+		
+		
+		if self.old_yer and self.gravity == -10 then
+			print("doing the push")
+			self.object:setvelocity({x=x,y=0,z=z})
+			self.old_yer = nil
+		end
 		
 		if self.turning ~= true then
 		--on ground
@@ -286,7 +293,6 @@ minetest.register_entity("open_minecart:minecart", {
 				local name = minetest.get_name_from_content_id(data[p_pos])
 				self.is_rail = (1 == self.check_rail(name))
 				if self.is_rail == true then
-
 					--go faster downhill
 					--also wait until past node center to go down
 					if y < 0 and vector.distance(pos,vector.add(floorpos,self.direction)) <= 1 then
@@ -301,6 +307,7 @@ minetest.register_entity("open_minecart:minecart", {
 						self.direction.y = y
 						self.object:setvelocity(vector.multiply(self.direction,self.velocity))
 					end
+					self.old_yer = y
 					break
 				end
 			end
@@ -321,7 +328,9 @@ minetest.register_entity("open_minecart:minecart", {
 					self.yaw = self.yaw+math.pi
 				end
 				
-				self.pitch = (vec.y*self.velocity)*-1
+				
+				--self.pitch = (vec.y*self.velocity)*-1
+				
 			end
 		--try to change dir
 		elseif self.is_rail == false and self.direction then
