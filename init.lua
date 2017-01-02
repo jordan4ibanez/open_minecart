@@ -17,11 +17,12 @@ minetest.register_entity("open_minecart:minecart", {
 	collision_radius = 1, -- collision sphere radius
 	physical     = true,
 	collide_with_objects = false, -- for magnetic collision
-	max_velocity = 4,
-	acceleration = 5,
+	max_velocity = 8, --how fast a cart can move
+	acceleration = 12, --the elasticity of collision detection and acceleration
 	automatic_face_movement_dir = 90, --for smoothness
 	yaw = 0,
 	velocity = 0,
+	pitch = 0,
 	direction = {x=0,y=0,z=0},
 	on_rail  = false,--if it's within a rail node
 	is_rail  = false,--if there's a rail in front of it
@@ -147,13 +148,12 @@ minetest.register_entity("open_minecart:minecart", {
 			--only collide with minecarts, mobs, and players
 						
 			--add exception if a nil entity exists around it
-			if object:is_player() or ((object:get_luaentity() and object:get_luaentity().mob == true and object ~= self.object)) or (object:get_luaentity() and object:get_luaentity().minecart == true) then
+			if object:is_player() or ((object:get_luaentity() and object:get_luaentity().mob == true and object ~= self.object)) or (object:get_luaentity() and object:get_luaentity().minecart == true and object ~= self.object) then
 				local pos2 = object:getpos()
 				local vec  = {x=pos.x-pos2.x, z=pos.z-pos2.z}
 				--push away harder the closer the collision is, could be used for mob cannons
 				--+0.5 to add player's collisionbox, could be modified to get other mobs widths
 				local force = (1) - vector.distance({x=pos.x,y=0,z=pos.z}, {x=pos2.x,y=0,z=pos2.z})--don't use y to get verticle distance
-									
 				--modify existing value to magnetize away from mulitiple entities/players
 				x = x + (vec.x * force) * 20
 				z = z + (vec.z * force) * 20
@@ -162,26 +162,53 @@ minetest.register_entity("open_minecart:minecart", {
 		return({x,z})
 	end,
 
+	
 	-- how a minecarts moves around the world
 	movement = function(self,dtime)
-					
-		local collide_values = self.collision(self)
-		local c_x = collide_values[1]
-		local c_z = collide_values[2]
-		
-
+		self.collide_with_terrain(self)
+	
 		--move cart to goal velocity using acceleration for smoothness
-		local vel = self.object:getvelocity()
+		local vel = self.object:getvelocity()		
+		local collide_values = self.collision(self)
 		
 		
-		local x   = math.sin(self.yaw) * -self.velocity
-		local z   = math.cos(self.yaw) * self.velocity
+		--call this variables to 0 and only change when needed
+		local c_x = 0
+		local c_z = 0
+		local x   = 0
+		local z   = 0
 		
-		--self.inertia(self)
+		--only collision detect on axis when on a rail
+		--if on rail and rail in front of then call this
+		if self.on_rail == true and self.velocity > 0 and self.turning ~= true then
+			--prefer x over z for no particular reason
+			--preference is to only call one axis when riding rail as to not push off rail
+			x   = math.sin(self.yaw) * -self.velocity
+			z   = math.cos(self.yaw) * self.velocity
+			if self.direction.x ~= 0 then
+				c_x = collide_values[1]
+			elseif self.direction.z ~= 0 then
+				c_z = collide_values[2]
+			end
+		--if not on rail, collision detect like normal
+		--allow player to push minecart onto rail, or push it around rails
+		else
+			c_x = collide_values[1]
+			c_z = collide_values[2]
+			x   = math.sin(self.yaw) * -self.velocity
+			z   = math.cos(self.yaw) * self.velocity
+		end
+		
+		
+		
 
 		local gravity = -10
+		if self.is_rail == true and self.pitch then
+			gravity = self.pitch
+		end
 		
-		print(self.turning)
+		print(gravity)
+		
 		if self.turning ~= true then
 		--on ground
 		if gravity == -10 then 
@@ -191,16 +218,41 @@ minetest.register_entity("open_minecart:minecart", {
 			self.object:setacceleration({x=(x - vel.x + c_x)*self.acceleration,y=(gravity-vel.y)*self.acceleration,z=(z - vel.z + c_z)*self.acceleration})
 		end
 		else
-		--navigating a turn
+			--navigating a turn
+			local mult = vector.multiply(self.direction, self.velocity)
 			self.object:setvelocity({x=x,y=0,z=z})
 		end
 		
+		--set the velocity if colliding
+		if (vel.x ~= 0 or vel.z ~= 0) and (c_x ~= 0 or c_z ~= 0) then
+			local newspeed = vector.length({x=c_x,y=0,z=c_z})
+			--only set if greater
+			if newspeed > self.velocity then
+				self.velocity = newspeed
+			end
+		end
+		
+		--this will overwrite the inertia set by the setting self.velocity
+		--self.inertia(self)
+		
 	end,
-	
+	--make the cart not collide with terrain when on rail
+	collide_with_terrain = function(self)
+		if self.is_rail == true then
+			--print("ghost")
+			self.object:set_properties({physical = false,})
+		else
+			--print("solid")
+			self.object:set_properties({physical = true,})
+		end
+	end,
+
+	--slow the minecart down
 	inertia = function(self)
+		--print(self.velocity)
 		if self.velocity > 0 then
-			self.velocity = self.velocity - 0.1
-		elseif self.velocity < 0 then
+			self.velocity = self.velocity - 0.01
+		elseif self.velocity <= 0 then
 			self.velocity = 0
 		end		
 	end,
@@ -229,9 +281,25 @@ minetest.register_entity("open_minecart:minecart", {
 		
 		--this function divides real pos by goal node pos to get smooth movement
 		
-		--print(dump(floorpos),dump(self.direction))
+		--reset variables
 		self.turning = false
+		self.pitch = 0
 		
+		--try to go up or down slope
+		if self.is_rail == false and self.direction then
+			for y = -1,1 do
+				local p_pos = area:index(floorpos.x+self.direction.x,floorpos.y+y,floorpos.z+self.direction.z)
+				local name = minetest.get_name_from_content_id(data[p_pos])
+				self.is_rail = (1 == self.check_rail(name))
+				if self.is_rail == true then
+					self.pitch = (y*self.velocity) * 1.5
+					
+					print("broken at "..y)
+					break
+				end
+			end
+		end
+		self.velocity = self.max_velocity
 		--debug to get carts to follow in a straight line
 		if self.is_rail == true and self.direction then
 			local pos2 = vector.add(floorpos,self.direction)
@@ -246,12 +314,9 @@ minetest.register_entity("open_minecart:minecart", {
 				if pos2.x > pos.x then
 					self.yaw = self.yaw+math.pi
 				end
-				
-				self.velocity = self.max_velocity
 			end
 		--try to change dir
 		elseif self.is_rail == false and self.direction then
-		
 			--if x then go to z
 			if self.direction.x ~= 0 then
 				--will always prefer -z if possible
@@ -276,10 +341,9 @@ minetest.register_entity("open_minecart:minecart", {
 							if pos2.x > pos.x then
 								self.yaw = self.yaw+math.pi
 							end
-							
-							self.velocity = self.max_velocity
 							self.turning = true
 						end
+						
 								
 						return
 					end
@@ -310,7 +374,6 @@ minetest.register_entity("open_minecart:minecart", {
 								self.yaw = self.yaw+math.pi
 							end
 							
-							self.velocity = self.max_velocity
 							self.turning = true
 						end
 								
@@ -318,6 +381,7 @@ minetest.register_entity("open_minecart:minecart", {
 					end
 					end
 				end
+				--
 			
 			end
 		
@@ -353,11 +417,12 @@ minetest.register_entity("open_minecart:minecart", {
 		
 		
 		--on rail
-		if self.on_rail == true then
+		if self.on_rail == true or self.is_rail == true then
 			self.next_rail(self,vm,area,data)
 		else
 			--just give up and go off the rails
 			self.velocity = 0
+			self.pitch = 0
 		end
 		
 		
