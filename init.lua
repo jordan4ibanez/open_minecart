@@ -181,6 +181,8 @@ minetest.register_entity("open_minecart:minecart", {
 
 		local gravity = -10
 		
+		print(self.turning)
+		if self.turning ~= true then
 		--on ground
 		if gravity == -10 then 
 			self.object:setacceleration({x=(x - vel.x + c_x)*self.acceleration,y=-10,z=(z - vel.z + c_z)*self.acceleration})				
@@ -188,6 +190,11 @@ minetest.register_entity("open_minecart:minecart", {
 		else 
 			self.object:setacceleration({x=(x - vel.x + c_x)*self.acceleration,y=(gravity-vel.y)*self.acceleration,z=(z - vel.z + c_z)*self.acceleration})
 		end
+		else
+		--navigating a turn
+			self.object:setvelocity({x=x,y=0,z=z})
+		end
+		
 	end,
 	
 	inertia = function(self)
@@ -198,7 +205,7 @@ minetest.register_entity("open_minecart:minecart", {
 		end		
 	end,
 
-
+	
 
 	--check if node is rail
 	check_rail = function(name)
@@ -223,6 +230,8 @@ minetest.register_entity("open_minecart:minecart", {
 		--this function divides real pos by goal node pos to get smooth movement
 		
 		--print(dump(floorpos),dump(self.direction))
+		self.turning = false
+		
 		--debug to get carts to follow in a straight line
 		if self.is_rail == true and self.direction then
 			local pos2 = vector.add(floorpos,self.direction)
@@ -269,6 +278,7 @@ minetest.register_entity("open_minecart:minecart", {
 							end
 							
 							self.velocity = self.max_velocity
+							self.turning = true
 						end
 								
 						return
@@ -301,6 +311,7 @@ minetest.register_entity("open_minecart:minecart", {
 							end
 							
 							self.velocity = self.max_velocity
+							self.turning = true
 						end
 								
 						return
