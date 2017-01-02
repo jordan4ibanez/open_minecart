@@ -165,7 +165,7 @@ minetest.register_entity("open_minecart:minecart", {
 	
 	-- how a minecarts moves around the world
 	movement = function(self,dtime)
-		self.collide_with_terrain(self)
+		--self.collide_with_terrain(self)
 	
 		--move cart to goal velocity using acceleration for smoothness
 		local vel = self.object:getvelocity()		
@@ -203,11 +203,15 @@ minetest.register_entity("open_minecart:minecart", {
 		
 
 		local gravity = -10
-		if self.is_rail == true and self.pitch then
+		self.object:set_properties({physical = true,})
+		if self.is_rail == true and self.pitch ~= 0 then
 			gravity = self.pitch
+			--ghost through nodes when going up
+			self.object:set_properties({physical = false,})
 		end
 		
-		print(gravity)
+		--print(gravity)
+		--print(self.velocity)
 		
 		if self.turning ~= true then
 		--on ground
@@ -233,25 +237,15 @@ minetest.register_entity("open_minecart:minecart", {
 		end
 		
 		--this will overwrite the inertia set by the setting self.velocity
-		--self.inertia(self)
+		self.inertia(self)
 		
-	end,
-	--make the cart not collide with terrain when on rail
-	collide_with_terrain = function(self)
-		if self.is_rail == true then
-			--print("ghost")
-			self.object:set_properties({physical = false,})
-		else
-			--print("solid")
-			self.object:set_properties({physical = true,})
-		end
 	end,
 
 	--slow the minecart down
 	inertia = function(self)
 		--print(self.velocity)
 		if self.velocity > 0 then
-			self.velocity = self.velocity - 0.01
+			self.velocity = self.velocity - 0.02
 		elseif self.velocity <= 0 then
 			self.velocity = 0
 		end		
@@ -292,14 +286,26 @@ minetest.register_entity("open_minecart:minecart", {
 				local name = minetest.get_name_from_content_id(data[p_pos])
 				self.is_rail = (1 == self.check_rail(name))
 				if self.is_rail == true then
-					self.pitch = (y*self.velocity) * 1.5
-					
-					print("broken at "..y)
+
+					--go faster downhill
+					--also wait until past node center to go down
+					if y < 0 and vector.distance(pos,vector.add(floorpos,self.direction)) <= 1 then
+						if self.velocity < self.max_velocity then
+							self.velocity = self.velocity + 1
+						end
+						self.pitch = (y*self.velocity)
+						self.direction.y = y
+						self.object:setvelocity(vector.multiply(self.direction,self.velocity))
+					else
+						self.pitch = (y*self.velocity)
+						self.direction.y = y
+						self.object:setvelocity(vector.multiply(self.direction,self.velocity))
+					end
 					break
 				end
 			end
 		end
-		self.velocity = self.max_velocity
+		
 		--debug to get carts to follow in a straight line
 		if self.is_rail == true and self.direction then
 			local pos2 = vector.add(floorpos,self.direction)
@@ -314,6 +320,8 @@ minetest.register_entity("open_minecart:minecart", {
 				if pos2.x > pos.x then
 					self.yaw = self.yaw+math.pi
 				end
+				
+				self.pitch = (vec.y*self.velocity)*-1
 			end
 		--try to change dir
 		elseif self.is_rail == false and self.direction then
