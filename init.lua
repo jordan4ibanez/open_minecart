@@ -210,15 +210,6 @@ minetest.register_entity("open_minecart:minecart", {
 			self.object:set_properties({physical = false,})
 		end
 		
-		--print(gravity)
-		--print(self.velocity)
-		
-		
-		if self.old_yer and self.gravity == -10 then
-			print("doing the push")
-			self.object:setvelocity({x=x,y=0,z=z})
-			self.old_yer = nil
-		end
 		
 		if self.turning ~= true then
 		--on ground
