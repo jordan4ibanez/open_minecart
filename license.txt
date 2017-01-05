@@ -1,5 +1,11 @@
-The models are from https://github.com/minetest/minetest_game/tree/master/mods/carts (cc0)
+The models are from:
+https://github.com/minetest/minetest_game/tree/master/mods/carts 
+(cc0)
 
-The textures are from :https://github.com/minetest/minetest_game/tree/master/mods/carts (wtfpl)
+The textures are from:
+https://github.com/minetest/minetest_game/tree/master/mods/carts 
+(wtfpl)
 
-The code is from my local repo open ai and built from scratch (cc0) feel free to copy and redistribute, you don't have to tell me about changes you've made I just want to see mods improve
+The code is from my local repo open ai and built from scratch 
+(cc0) 
+feel free to copy, redistribute, sample, clone, etc code, you don't have to tell me about changes you've made I just want to see mods improve
