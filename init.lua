@@ -1,5 +1,3 @@
-dofile(minetest.get_modpath("open_minecart").."/items.lua")
-
 minetest.register_entity("open_minecart:minecart", {
 	--Do simpler definition variables for ease of use
 	minecart     = true,
