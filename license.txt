@@ -3,8 +3,7 @@ https://github.com/minetest/minetest_game/tree/master/mods/carts
 (cc0)
 
 The textures are from:
-https://github.com/minetest/minetest_game/tree/master/mods/carts 
-(wtfpl)
+PixelBOX(WTFPL)
 
 The code samples from my local repo open ai as a base, the rest is built from scratch 
 (cc0) 
